@@ -8,6 +8,8 @@ GENERATOR_PORT="0 1"
 SNIFFER=user@some.server.com
 SNIFFER_PATH=moonsniff/MoonGen/
 SNIFFER_PORT="0 1"
+SNIFFER_OUTPUT=measurements
+SNIFFER_LIVE=""
 
 while :; do
 	case $1 in
@@ -24,14 +26,21 @@ while :; do
 			shift
 			;;
 		-s|--sniffports)
-			$SNIFFER_PORT="$2 $3"
+			SNIFFER_PORT="$2 $3"
 			shift
 			shift
 			;;
 		-g|--genports)
-			$GENERATOR_PORT="$2 $3"
+			GENERATOR_PORT="$2 $3"
 			shift
 			shift
+			;;
+		-f|--file)
+			SNIFFER_OUTPUT="--output $2"
+			shift
+			;;
+		-l|--live)
+			SNIFFER_LIVE="--live"
 			;;
 		-?*)
 			printf 'WARN: Unknown option (abort): %s\n' "$1" >&2
@@ -46,7 +55,7 @@ done
 mkdir logfiles
 
 # build the commands
-SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} --live -r ${RUN_TIME}"
+SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} ${SNIFFER_LIVE} -r ${RUN_TIME} ${SNIFFER_OUTPUT}"
 GENERATOR_COMMAND="./${GENERATOR_PATH}build/MoonGen ${GENERATOR_PATH}examples/moonsniff/traffic-gen.lua ${GENERATOR_PORT} -s ${SEND_RATE} -r $(( $RUN_TIME + 4 ))"
 
 echo Executing the following command\(s\):$'\n\t' $SNIFFER_COMMAND$'\n\n' > logfiles/sniffer.log
