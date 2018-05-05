@@ -3,11 +3,11 @@
 #fill in default values to avoid setting to many options
 GENERATOR=user@some.server.com
 GENERATOR_PATH=moonsniff/MoonGen/
-GENERATOR_PORT="0 1"
+GENERATOR_PORT="1 0"
 
 SNIFFER=user@some.server.com
 SNIFFER_PATH=moonsniff/MoonGen/
-SNIFFER_PORT="0 1"
+SNIFFER_PORT="1 0"
 SNIFFER_OUTPUT=measurements
 SNIFFER_LIVE=""
 
@@ -52,7 +52,7 @@ while :; do
 	shift
 done
 
-mkdir logfiles
+mkdir -p logfiles
 
 # build the commands
 SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} ${SNIFFER_LIVE} -r ${RUN_TIME} ${SNIFFER_OUTPUT}"
@@ -87,3 +87,4 @@ printf "In case of live processing it might take longer.\n"
 ) &
 wait
 
+printf "Done\n\n"
