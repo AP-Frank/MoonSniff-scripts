@@ -1,7 +1,14 @@
 import argparse
+import os
+import timeit
+
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import collections
+
+
+start = timeit.default_timer()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--begin', help="Start value")
@@ -207,3 +214,7 @@ hists, points = read_samples()
 
 # plot_graph()
 violin_graph(hists, points)
+
+stop = timeit.default_timer()
+
+print((stop - start)/60)
