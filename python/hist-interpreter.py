@@ -90,6 +90,20 @@ def plot_graph():
     plt.show()
 
 
+def plot_cdf(compressed_hist):
+    print(compressed_hist)
+    print(compressed_hist[0])
+    x = compressed_hist[0][0]
+    y = compressed_hist[0][1]
+
+    cummulative_y = np.cumsum(compressed_hist[0][1])
+
+    plt.plot(x, y)
+    plt.plot(x, cummulative_y, 'r--')
+    plt.show()
+
+
+
 def violin_graph(histograms, xpoints):
     print("now plotting .. ")
     xpoints = [int(value) for value in xpoints]
@@ -125,6 +139,10 @@ def read_samples():
     hists = list()
     points = list()
 
+    # list is not expanded as hists
+    compressed_hist = list()
+
+
     for rate in range(begin, end, stepsize):
         value_lst = list()
         amount_lst = list()
@@ -140,6 +158,7 @@ def read_samples():
             value_lst.append(number)
             amount_lst.append(amount)
 
+        compressed_hist.append((value_lst, amount_lst))
         # new stuff
         hist = np.repeat(value_lst, amount_lst)
 
@@ -184,7 +203,7 @@ def read_samples():
                 else:
                     exit(0)
 
-    return hists, points
+    return hists, points, compressed_hist
 
 
 # bins = list()
@@ -253,10 +272,11 @@ def read_samples():
 # print(rate)
 
 configure_plt_font()
-hists, points = read_samples()
+hists, points, compressed_hist = read_samples()
 
 # plot_graph()
-violin_graph(hists, points)
+#violin_graph(hists, points)
+plot_cdf(compressed_hist)
 
 stop = timeit.default_timer()
 
