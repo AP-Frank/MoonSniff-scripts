@@ -105,8 +105,23 @@ def compute_ccdf(compressed_hist, index):
     inverse = np.repeat(1, len(y))
     inverse = np.subtract(inverse, cummulative_y)
 
-    return x, inverse
+    return x, y, inverse
 
+
+def plot_ccdf(compressed_hist, points):
+    for i in range(0, len(compressed_hist)):
+        x, y, inverse = compute_ccdf(compressed_hist, i)
+        plt.semilogy(x, inverse)
+
+    plt.title("Latency of MoonGen forwarder (no buckets in postprocessing)")
+    plt.xlabel("Latency [us]")
+    plt.ylabel("Normalized prevalence")
+    plt.legend([str(int(point)) + " mbit/s" for point in points])
+    axes = plt.gca()
+    axes.set_xlim([0, 40])
+
+    save_figure(plt, 'ccdf-nob')
+    plt.show()
 
 
 def plot_cdf_df(compressed_hist, points):
@@ -144,20 +159,7 @@ def plot_cdf_df(compressed_hist, points):
 
 
 def plot_ccdf_df(compressed_hist, points):
-    x = compressed_hist[0][0]
-    y = compressed_hist[0][1]
-
-    # convert to [us]
-    x = np.divide(x, 1000)
-
-    # normalize to 1
-    y = np.divide(y, sum(y))
-    print(y)
-
-    cummulative_y = np.cumsum(y)
-
-    inverse = np.repeat(1, len(y))
-    inverse = np.subtract(inverse, cummulative_y)
+    x, y, inverse = compute_ccdf(compressed_hist, 0)
 
     plt.semilogy(x, y)
     plt.semilogy(x, inverse, 'r--')
@@ -350,8 +352,9 @@ hists, points, compressed_hist = read_samples()
 
 # plot_graph()
 #violin_graph(hists, points)
-plot_cdf_df(compressed_hist, points)
-plot_ccdf_df(compressed_hist, points)
+#plot_cdf_df(compressed_hist, points)
+#plot_ccdf_df(compressed_hist, points)
+plot_ccdf(compressed_hist, points)
 
 stop = timeit.default_timer()
 
