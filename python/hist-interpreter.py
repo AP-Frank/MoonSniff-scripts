@@ -47,10 +47,29 @@ def get_percentile(percentile):
             return k
 
 
+def ask_yes_no(question):
+    while True:
+        print(question + " [y/n] ")
+        choice = input().lower()
+        if choice in ['true', '1', 't', 'y', 'yes']:
+            return True
+        elif choice in ['false', '0', 'f', 'n', 'no']:
+            return False
+        else:
+            print("Please write yes or no.")
+
+
 def configure_plt_font():
     if args.tex:
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
+
+
+def save_figure(plt, filename):
+    ctr = 0
+    while os.path.exists('{}{:d}.svg'.format(filename, ctr)):
+        ctr += 1
+    plt.savefig('{}{:d}.svg'.format(filename, ctr))
 
 
 def plot_graph():
@@ -67,7 +86,7 @@ def plot_graph():
     plt.title('Latency measurement for 1m optical fiber cable')
     plt.legend(['measured', 'expected'])
     plt.grid(True)
-    plt.savefig('figure')
+    save_figure(plt, 'figure')
     plt.show()
 
 
@@ -75,25 +94,30 @@ def violin_graph(histograms, xpoints):
     print("now plotting .. ")
     xpoints = [int(value) for value in xpoints]
     ticks = np.arange(1, len(xpoints) + 1, 1)
+    plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
     violin_parts = plt.violinplot(histograms, showmeans=True, showextrema=True, showmedians=True, widths=0.7)
     plt.setp(violin_parts['bodies'], facecolor='red', edgecolor='black')
-    plt.setp(violin_parts['cmedians'], color='black')
-    plt.setp(violin_parts['cmeans'], color='blue')
+    plt.setp(violin_parts['cmedians'], color='black', linestyle='dotted', label='median')
+    plt.setp(violin_parts['cmeans'], color='blue', label='mean')
     plt.setp(violin_parts['cmaxes'], color='black')
     plt.setp(violin_parts['cmins'], color='black')
     plt.setp(violin_parts['cbars'], color='black')
-    plt.title("Latency measurement for 20m fiber cable")
-    plt.xlabel("Average line-rate in mbit/s")
-    plt.ylabel("Latency in ns")
+
+    plt.title("Latency measurement for MoonGen forwarder")
+    plt.xlabel("Average line-rate [mbit/s]")
+    plt.ylabel("Latency [ns]")
     plt.xticks(ticks, xpoints, rotation='vertical')
-    #ax = plt.gca()
-    #ax.set_xticks(ticks)
-    #ax.set_xticklabels(xpoints)
-    plt.savefig('figure.svg')
-    plt.show()
+
+    plt.legend(handles=[violin_parts['cmeans'], violin_parts['cmedians']])
+    # ax = plt.gca()
+    # ax.set_xticks(ticks)
+    # ax.set_xticklabels(xpoints)
+    save_figure(plt, 'figure')
+    # plt.show()
 
 
 def read_samples():
+    skip_rates = False
     stepsize = int(args.stepsize)
     begin = int(args.begin)
     end = int(args.end) + stepsize
@@ -119,11 +143,18 @@ def read_samples():
         # new stuff
         hist = np.repeat(value_lst, amount_lst)
 
-        nth = int(sum(amount_lst) / 1000000)
+        nth = max(1, int(sum(amount_lst) / 1000000))
         print("nth " + str(nth))
 
         print("size before: " + str(hist.size))
-        hist = hist[::nth].copy()
+        reduced = np.insert(hist[nth:len(hist) - 1:nth].copy(), 0, hist[0])
+        reduced = np.append(reduced, hist[len(hist) - 1])
+        print(reduced)
+
+        hist = reduced
+        # hist = hist[nth:len(hist) - 1:nth].copy()
+
+        print(hist)
 
         print("size after: " + str(hist.size))
 
@@ -131,15 +162,27 @@ def read_samples():
         hists.append(hist)
         # print(hists)
 
-        with open("measurement-rate-" + str(rate) + "-stats.csv") as file:
-            next(file)
+        if not skip_rates:
+            ratefile = "measurement-rate-" + str(rate) + "-stats.csv"
 
-            mbit_framing = list()
-            for line in file:
-                vals = line.split(",")
-                mbit_framing.append(float(vals[5]))
+            try:
+                with open(ratefile) as file:
+                    next(file)
 
-            points.append(np.average(mbit_framing))
+                    mbit_framing = list()
+                    for line in file:
+                        vals = line.split(",")
+                        mbit_framing.append(float(vals[5]))
+
+                    points.append(np.average(mbit_framing))
+
+            except FileNotFoundError as e:
+                print("File " + ratefile + " not found. Actual line-rate cannot be displayed.")
+                if ask_yes_no("Fall back to base-rate?"):
+                    skip_rates = True
+                    points = range(begin, end, stepsize)
+                else:
+                    exit(0)
 
     return hists, points
 
