@@ -89,17 +89,91 @@ def plot_graph():
     save_figure(plt, 'figure')
     plt.show()
 
+def compute_ccdf(compressed_hist, index):
+    x = compressed_hist[index][0]
+    y = compressed_hist[index][1]
 
-def plot_cdf(compressed_hist):
+    # convert to [us]
+    x = np.divide(x, 1000)
+
+    # normalize to 1
+    y = np.divide(y, sum(y))
+    print(y)
+
+    cummulative_y = np.cumsum(y)
+
+    inverse = np.repeat(1, len(y))
+    inverse = np.subtract(inverse, cummulative_y)
+
+    return x, inverse
+
+
+
+def plot_cdf_df(compressed_hist, points):
     print(compressed_hist)
     print(compressed_hist[0])
+
     x = compressed_hist[0][0]
     y = compressed_hist[0][1]
 
-    cummulative_y = np.cumsum(compressed_hist[0][1])
+    # convert to [us]
+    x = np.divide(x, 1000)
+
+    # normalize to 1
+    y = np.divide(y, sum(y))
+    print(y)
+
+    cummulative_y = np.cumsum(y)
 
     plt.plot(x, y)
     plt.plot(x, cummulative_y, 'r--')
+    axes = plt.gca()
+    axes.set_xlim([3, 9])
+    # axes.set_ylim([0, 1])
+
+    plt.title("Latency of MoonGen forwarder (50 ns buckets in postprocessing, " + str(int(points[0])) + " mbit/s)")
+    plt.xlabel("Latency [us]")
+    plt.ylabel("Normalized prevalence")
+    plt.legend(['df', 'cdf'])
+
+    print('saving figure')
+    save_figure(plt, 'compare-50b-cdf')
+
+    print('finished saving figure, now plotting')
+    plt.show()
+
+
+def plot_ccdf_df(compressed_hist, points):
+    x = compressed_hist[0][0]
+    y = compressed_hist[0][1]
+
+    # convert to [us]
+    x = np.divide(x, 1000)
+
+    # normalize to 1
+    y = np.divide(y, sum(y))
+    print(y)
+
+    cummulative_y = np.cumsum(y)
+
+    inverse = np.repeat(1, len(y))
+    inverse = np.subtract(inverse, cummulative_y)
+
+    plt.semilogy(x, y)
+    plt.semilogy(x, inverse, 'r--')
+    axes = plt.gca()
+    axes.set_xlim([3, 9])
+    # axes.set_ylim([0, 1])
+
+    plt.title("Latency of MoonGen forwarder (50 ns buckets in postprocessing, " + str(int(points[0])) + " mbit/s)")
+    plt.xlabel("Latency [us]")
+    plt.ylabel("Normalized prevalence")
+    plt.legend(['df', 'ccdf'])
+
+    print('saving figure')
+    save_figure(plt, 'compare-50b-ccdf')
+
+    print('finished saving figure, now plotting')
     plt.show()
 
 
@@ -276,8 +350,11 @@ hists, points, compressed_hist = read_samples()
 
 # plot_graph()
 #violin_graph(hists, points)
-plot_cdf(compressed_hist)
+plot_cdf_df(compressed_hist, points)
+plot_ccdf_df(compressed_hist, points)
 
 stop = timeit.default_timer()
 
+print()
+print('Estimated time [min]')
 print((stop - start)/60)
