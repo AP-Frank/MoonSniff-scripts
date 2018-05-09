@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import collections
 
-
 start = timeit.default_timer()
 
 parser = argparse.ArgumentParser()
@@ -66,10 +65,17 @@ def configure_plt_font():
 
 
 def save_figure(plt, filename):
+    directory = 'images'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
     ctr = 0
-    while os.path.exists('{}{:d}.svg'.format(filename, ctr)):
+
+    while os.path.exists(directory + '/{}{:d}.png'.format(filename, ctr)):
         ctr += 1
-    plt.savefig('{}{:d}.svg'.format(filename, ctr))
+
+    plt.savefig(directory + '/{}{:d}.png'.format(filename, ctr), dpi=200)
+    print('Done saving')
 
 
 def plot_graph():
@@ -89,9 +95,10 @@ def plot_graph():
     save_figure(plt, 'figure')
     plt.show()
 
+
 def compute_ccdf(compressed_hist, index):
-    x = compressed_hist[index][0]
-    y = compressed_hist[index][1]
+    x = compressed_hist[index][0].copy()
+    y = compressed_hist[index][1].copy()
 
     # convert to [us]
     x = np.divide(x, 1000)
@@ -108,23 +115,26 @@ def compute_ccdf(compressed_hist, index):
     return x, y, inverse
 
 
-def plot_ccdf(compressed_hist, points):
+def plot_ccdf(compressed_hist, points, bucket_size):
     for i in range(0, len(compressed_hist)):
         x, y, inverse = compute_ccdf(compressed_hist, i)
         plt.semilogy(x, inverse)
 
-    plt.title("Latency of MoonGen forwarder (no buckets in postprocessing)")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
-    plt.legend([str(int(point)) + " mbit/s" for point in points])
+    plt.legend([str(int(point)) + " Mbit/s" for point in points])
     axes = plt.gca()
     axes.set_xlim([0, 40])
 
-    save_figure(plt, 'ccdf-nob')
-    plt.show()
+    plt.tight_layout()
+    save_figure(plt, 'ccdf-' + str(bucket_size) + 'b')
+    # plt.show()
+
+    plt.close()
 
 
-def plot_cdf_df(compressed_hist, points):
+def plot_cdf_df(compressed_hist, points, bucket_size):
     print(compressed_hist)
     print(compressed_hist[0])
 
@@ -146,19 +156,22 @@ def plot_cdf_df(compressed_hist, points):
     axes.set_xlim([3, 9])
     # axes.set_ylim([0, 1])
 
-    plt.title("Latency of MoonGen forwarder (50 ns buckets in postprocessing, " + str(int(points[0])) + " mbit/s)")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(int(points[0])) + " Mbit/s)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
     plt.legend(['df', 'cdf'])
 
     print('saving figure')
-    save_figure(plt, 'compare-50b-cdf')
+    plt.tight_layout()
+    save_figure(plt, 'compare-' + str(bucket_size) + 'b-cdf')
 
     print('finished saving figure, now plotting')
-    plt.show()
+    # plt.show()
+
+    plt.close()
 
 
-def plot_ccdf_df(compressed_hist, points):
+def plot_ccdf_df(compressed_hist, points, bucket_size):
     x, y, inverse = compute_ccdf(compressed_hist, 0)
 
     plt.semilogy(x, y)
@@ -167,24 +180,56 @@ def plot_ccdf_df(compressed_hist, points):
     axes.set_xlim([3, 9])
     # axes.set_ylim([0, 1])
 
-    plt.title("Latency of MoonGen forwarder (50 ns buckets in postprocessing, " + str(int(points[0])) + " mbit/s)")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(int(points[0])) + " Mbit/s)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
     plt.legend(['df', 'ccdf'])
 
     print('saving figure')
-    save_figure(plt, 'compare-50b-ccdf')
+    plt.tight_layout()
+    save_figure(plt, 'compare-' + str(bucket_size) + 'b-ccdf')
 
     print('finished saving figure, now plotting')
-    plt.show()
+    # plt.show()
+
+    plt.close()
 
 
-
-def violin_graph(histograms, xpoints):
+def box_graph(histograms, xpoints, bucket_size):
     print("now plotting .. ")
     xpoints = [int(value) for value in xpoints]
     ticks = np.arange(1, len(xpoints) + 1, 1)
-    plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
+    # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
+    box_parts = plt.boxplot(histograms, showmeans=False, widths=0.7, whis=[0.01, 99.99])
+
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets)")
+    plt.xlabel("Average line-rate [Mbit/s]")
+    plt.ylabel("Latency [ns]")
+    plt.xticks(ticks, xpoints, rotation='vertical')
+
+    fliers = box_parts['fliers']
+
+    # Iterate over it!
+    for fly in fliers:
+        fdata = fly.get_data()
+        fly.set_data([fdata[0][0], fdata[0][-1]], [fdata[1][0], fdata[1][-1]])
+
+    # plt.legend(handles=[violin_parts['cmeans'], violin_parts['cmedians']])
+    # ax = plt.gca()
+    # ax.set_xticks(ticks)
+    # ax.set_xticklabels(xpoints)
+    plt.tight_layout()
+    save_figure(plt, 'box-' + str(bucket_size) + 'b')
+    # plt.show()
+
+    plt.close()
+
+
+def violin_graph(histograms, xpoints, bucket_size):
+    print("now plotting .. ")
+    xpoints = [int(value) for value in xpoints]
+    ticks = np.arange(1, len(xpoints) + 1, 1)
+    # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
     violin_parts = plt.violinplot(histograms, showmeans=True, showextrema=True, showmedians=True, widths=0.7)
     plt.setp(violin_parts['bodies'], facecolor='red', edgecolor='black')
     plt.setp(violin_parts['cmedians'], color='black', linestyle='dotted', label='median')
@@ -193,8 +238,8 @@ def violin_graph(histograms, xpoints):
     plt.setp(violin_parts['cmins'], color='black')
     plt.setp(violin_parts['cbars'], color='black')
 
-    plt.title("Latency measurement for MoonGen forwarder")
-    plt.xlabel("Average line-rate [mbit/s]")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets)")
+    plt.xlabel("Average line-rate [Mbit/s]")
     plt.ylabel("Latency [ns]")
     plt.xticks(ticks, xpoints, rotation='vertical')
 
@@ -202,8 +247,11 @@ def violin_graph(histograms, xpoints):
     # ax = plt.gca()
     # ax.set_xticks(ticks)
     # ax.set_xticklabels(xpoints)
-    save_figure(plt, 'figure')
+    plt.tight_layout()
+    save_figure(plt, 'violin-' + str(bucket_size) + 'b')
     # plt.show()
+
+    plt.close()
 
 
 def read_samples():
@@ -217,7 +265,6 @@ def read_samples():
 
     # list is not expanded as hists
     compressed_hist = list()
-
 
     for rate in range(begin, end, stepsize):
         value_lst = list()
@@ -264,12 +311,12 @@ def read_samples():
                 with open(ratefile) as file:
                     next(file)
 
-                    mbit_framing = list()
+                    Mbit_framing = list()
                     for line in file:
                         vals = line.split(",")
-                        mbit_framing.append(float(vals[5]))
+                        Mbit_framing.append(float(vals[5]))
 
-                    points.append(np.average(mbit_framing))
+                    points.append(np.average(Mbit_framing))
 
             except FileNotFoundError as e:
                 print("File " + ratefile + " not found. Actual line-rate cannot be displayed.")
@@ -351,13 +398,14 @@ configure_plt_font()
 hists, points, compressed_hist = read_samples()
 
 # plot_graph()
-#violin_graph(hists, points)
-#plot_cdf_df(compressed_hist, points)
-#plot_ccdf_df(compressed_hist, points)
-plot_ccdf(compressed_hist, points)
+# violin_graph(hists, points, 50)
+box_graph(hists, points, 50)
+#plot_cdf_df(compressed_hist, points, 50)
+#plot_ccdf_df(compressed_hist, points, 50)
+#plot_ccdf(compressed_hist, points, 50)
 
 stop = timeit.default_timer()
 
 print()
 print('Estimated time [min]')
-print((stop - start)/60)
+print((stop - start) / 60)
