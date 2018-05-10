@@ -125,7 +125,7 @@ def plot_ccdf(compressed_hist, points, bucket_size):
     plt.ylabel("Normalized prevalence")
     plt.legend([str(int(point)) + " Mbit/s" for point in points])
     axes = plt.gca()
-    axes.set_xlim([0, 40])
+    axes.set_xlim([0, 0.5])
 
     plt.tight_layout()
     save_figure(plt, 'ccdf-' + str(bucket_size) + 'b')
@@ -200,19 +200,22 @@ def box_graph(histograms, xpoints, bucket_size):
     xpoints = [int(value) for value in xpoints]
     ticks = np.arange(1, len(xpoints) + 1, 1)
     # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
-    box_parts = plt.boxplot(histograms, showmeans=False, widths=0.7, whis=[0.01, 99.99])
+
+    # data set is pretty big, so fliers just cluster up the plot
+    # instead draw only the min and max
+    plt.boxplot(histograms, showmeans=False, widths=0.7, whis=[5, 95], showfliers=False)
 
     plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Average line-rate [Mbit/s]")
     plt.ylabel("Latency [ns]")
     plt.xticks(ticks, xpoints, rotation='vertical')
 
-    fliers = box_parts['fliers']
+    # compute mins and maxes
+    maxes = [hist[len(hist) - 1] for hist in histograms]
+    mins = [hist[0] for hist in histograms]
 
-    # Iterate over it!
-    for fly in fliers:
-        fdata = fly.get_data()
-        fly.set_data([fdata[0][0], fdata[0][-1]], [fdata[1][0], fdata[1][-1]])
+    plt.plot(ticks, maxes, color='black', marker='o', linestyle='None', fillstyle='none')
+    plt.plot(ticks, mins, color='black', marker='o', linestyle='None', fillstyle='none')
 
     # plt.legend(handles=[violin_parts['cmeans'], violin_parts['cmedians']])
     # ax = plt.gca()
@@ -289,6 +292,9 @@ def read_samples():
         print("nth " + str(nth))
 
         print("size before: " + str(hist.size))
+
+        # downsampling: we do not want to loose the maximum or the minimum,
+        # so they are added manually
         reduced = np.insert(hist[nth:len(hist) - 1:nth].copy(), 0, hist[0])
         reduced = np.append(reduced, hist[len(hist) - 1])
         print(reduced)
@@ -309,6 +315,9 @@ def read_samples():
 
             try:
                 with open(ratefile) as file:
+                    # as the NIC first has to initialize, usually full
+                    # receiving capacity is only reached after a few seconds
+                    next(file)
                     next(file)
 
                     Mbit_framing = list()
@@ -316,6 +325,9 @@ def read_samples():
                         vals = line.split(",")
                         Mbit_framing.append(float(vals[5]))
 
+                    # the last values can also be influenced by the teardown
+                    del Mbit_framing[-1]
+                    del Mbit_framing[-1]
                     points.append(np.average(Mbit_framing))
 
             except FileNotFoundError as e:
@@ -398,11 +410,11 @@ configure_plt_font()
 hists, points, compressed_hist = read_samples()
 
 # plot_graph()
-# violin_graph(hists, points, 50)
-box_graph(hists, points, 50)
-#plot_cdf_df(compressed_hist, points, 50)
-#plot_ccdf_df(compressed_hist, points, 50)
-#plot_ccdf(compressed_hist, points, 50)
+# violin_graph(hists, points, 1)
+box_graph(hists, points, 1)
+# plot_cdf_df(compressed_hist, points, 1)
+# plot_ccdf_df(compressed_hist, points, 50)
+# plot_ccdf(compressed_hist, points, 1)
 
 stop = timeit.default_timer()
 
