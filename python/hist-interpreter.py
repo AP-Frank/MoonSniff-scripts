@@ -16,6 +16,19 @@ parser.add_argument('-t', '--tex', help="Use TeX for typesetting", action='store
 args = parser.parse_args()
 
 
+# colors taken from:
+# https://stackoverflow.com/a/287944
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 def ask_yes_no(question):
     while True:
         print(question + " [y/n] ")
@@ -41,6 +54,8 @@ def save_figure(plt, filename):
 
     ctr = 0
 
+    # check if a picture with this name exists
+    # to never overwrite old images
     while os.path.exists(directory + '/{}{:d}.png'.format(filename, ctr)):
         ctr += 1
 
@@ -75,7 +90,7 @@ def plot_ccdf(compressed_hist, points, bucket_size):
     plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
-    plt.legend([str(int(point)) + " Mbit/s" for point in points])
+    plt.legend([str(point) + " Mbit/s" for point in points])
     axes = plt.gca()
     axes.set_xlim([0, 0.5])
 
@@ -90,8 +105,8 @@ def plot_cdf_df(compressed_hist, points, bucket_size):
     print(compressed_hist)
     print(compressed_hist[0])
 
-    x = compressed_hist[0][0]
-    y = compressed_hist[0][1]
+    x = compressed_hist[0][0].copy()
+    y = compressed_hist[0][1].copy()
 
     # convert to [us]
     x = np.divide(x, 1000)
@@ -108,7 +123,7 @@ def plot_cdf_df(compressed_hist, points, bucket_size):
     axes.set_xlim([3, 9])
     # axes.set_ylim([0, 1])
 
-    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(int(points[0])) + " Mbit/s)")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(points[0]) + " Mbit/s)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
     plt.legend(['df', 'cdf'])
@@ -132,7 +147,7 @@ def plot_ccdf_df(compressed_hist, points, bucket_size):
     axes.set_xlim([3, 9])
     # axes.set_ylim([0, 1])
 
-    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(int(points[0])) + " Mbit/s)")
+    plt.title("Latency of MoonGen forwarder (" + str(bucket_size) + " ns buckets, " + str(points[0]) + " Mbit/s)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
     plt.legend(['df', 'ccdf'])
@@ -149,7 +164,6 @@ def plot_ccdf_df(compressed_hist, points, bucket_size):
 
 def box_graph(histograms, xpoints, bucket_size):
     print("now plotting .. ")
-    xpoints = [int(value) for value in xpoints]
     ticks = np.arange(1, len(xpoints) + 1, 1)
     # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
 
@@ -182,7 +196,6 @@ def box_graph(histograms, xpoints, bucket_size):
 
 def violin_graph(histograms, xpoints, bucket_size):
     print("now plotting .. ")
-    xpoints = [int(value) for value in xpoints]
     ticks = np.arange(1, len(xpoints) + 1, 1)
     # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
     violin_parts = plt.violinplot(histograms, showmeans=True, showextrema=True, showmedians=True, widths=0.7)
@@ -236,6 +249,7 @@ def read_samples():
             value_lst.append(number)
             amount_lst.append(amount)
 
+        # complete histogram without downsampling
         compressed_hist.append((value_lst, amount_lst))
 
         # TODO: instead of building a full sized list and reducing it later, build reduced one right away
@@ -270,21 +284,57 @@ def read_samples():
                 with open(ratefile) as file:
                     # as the NIC first has to initialize, usually full
                     # receiving capacity is only reached after a few seconds
-                    next(file)
+
+                    # first row is the header
                     next(file)
 
-                    Mbit_framing = list()
+                    # now retrieve devices
+                    dev1 = int(next(file).split(",")[1].split("=")[1])
+                    dev2 = dev1
+
+                    while dev1 == dev2:
+                        dev2 = int(next(file).split(",")[1].split("=")[1])
+
+                    Mbit_framing_1= list()
+                    Mbit_framing_2 = list()
+
                     for line in file:
                         vals = line.split(",")
-                        Mbit_framing.append(float(vals[5]))
+                        device = int(vals[1].split("=")[1])
+
+                        if device == dev1:
+                            Mbit_framing_1.append(float(vals[5]))
+                        elif device == dev2:
+                            Mbit_framing_2.append(float(vals[5]))
+                        else:
+                            print('ERR: The stats file lists more than 2 devices')
+                            exit(-1)
 
                     # the last values can also be influenced by the teardown
-                    del Mbit_framing[-1]
-                    del Mbit_framing[-1]
-                    points.append(np.average(Mbit_framing))
+                    del Mbit_framing_1[-1]
+                    del Mbit_framing_2[-1]
+
+                    avg_1 = np.average(Mbit_framing_1)
+                    avg_2 = np.average(Mbit_framing_2)
+                    difference = np.abs(avg_2 - avg_1)
+                    if difference > 100:
+                        print(bcolors.WARNING + 'WARN: Difference between incoming and outgoing transmit-rates of the '
+                                                'test device is high: {}'.format(difference) + bcolors.ENDC)
+                        print(bcolors.WARNING + 'The y-axis may be of. Printing both values.' + bcolors.ENDC)
+
+                        points.append("{}; {}".format(int(avg_1), int(avg_2)))
+                    else:
+                        # select the rate to display
+                        if avg_1 > avg_2:
+                            points.append(int(avg_1))
+                        else:
+                            points.append(int(avg_2))
+
+
 
             except FileNotFoundError as e:
-                print("File " + ratefile + " not found. Actual line-rate cannot be displayed.")
+                print(bcolors.WARNING + "WARN: File " + ratefile + " not found. Actual line-rate cannot be displayed."
+                      + bcolors.ENDC)
                 if ask_yes_no("Fall back to base-rate?"):
                     skip_rates = True
                     points = range(begin, end, stepsize)
@@ -298,17 +348,18 @@ configure_plt_font()
 hists, points, compressed_hist = read_samples()
 
 ###################################
-# Uncomment the image to create   #
+# Uncomment/comment below to      #
+# create images                   #
 #                                 #
 # Plotting more than one at a time#
-# is not tested yet               #
+# should also work                #
 ###################################
 
-# violin_graph(hists, points, 1)
+violin_graph(hists, points, 1)
 box_graph(hists, points, 1)
-# plot_cdf_df(compressed_hist, points, 1)
-# plot_ccdf_df(compressed_hist, points, 50)
-# plot_ccdf(compressed_hist, points, 1)
+plot_cdf_df(compressed_hist, points, 1)
+plot_ccdf_df(compressed_hist, points, 50)
+plot_ccdf(compressed_hist, points, 1)
 
 stop = timeit.default_timer()
 
