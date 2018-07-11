@@ -1,14 +1,11 @@
 #!/bin/bash
 
-#fill in default values to avoid setting to many options
+source configuration.sh
 
-PROCESSOR=user@some.server.com
-PROCESSOR_PATH=moonsniff/MoonGen/
 FILE_1=""
 FILE_2=""
-PROCESSOR_INPUT_1=/persistent/measurements-pre.mscap
-PROCESSOR_INPUT_2=/persistent/measurements-post.mscap
-PROCESSOR_DELETE=false
+PROCESSOR_INPUT_1=""
+PROCESSOR_INPUT_2=""
 
 while :; do
 	case $1 in
@@ -26,12 +23,13 @@ while :; do
 			PROCESSOR_INPUT_2="--second-input $2"
 			shift
 			;;
+		-r|--rate)
+			SEND_RATE="-$2"
+			shift
+			;;
 		-o|--output)
 			PROCESSOR_OUTPUT="--output $2"
 			shift
-			;;
-		-d|--delete)
-			PROCESSOR_DELETE=true
 			;;
 		-?*)
 			printf 'WARN: Unknown option (abort): %s\n' "$1" >&2
@@ -46,17 +44,17 @@ done
 mkdir -p logfiles
 
 # build the commands
-PROCESSOR_COMMAND="./${PROCESSOR_PATH}build/MoonGen ${PROCESSOR_PATH}examples/moonsniff/post-processing.lua ${PROCESSOR_INPUT_1} ${PROCESSOR_INPUT_2} ${PROCESSOR_OUTPUT}"
+PROCESSOR_COMMAND="./${PROCESSOR_PATH}build/MoonGen ${PROCESSOR_PATH}examples/moonsniff/post-processing.lua ${PROCESSOR_INPUT_1} ${PROCESSOR_INPUT_2} ${PROCESSOR_OUTPUT} --nrbuckets ${PROCESSOR_BUCKET_SIZE}"
 
-echo Executing the following command\(s\):$'\n\t' $PROCESSOR_COMMAND$'\n\n' > logfiles/processor.log
+echo Executing the following command\(s\):$'\n\t' $PROCESSOR_COMMAND$'\n\n' >> logfiles/processor${SEND_RATE}.log
 
 printf "Starting processing of input .. "
-ssh ${PROCESSOR} ${PROCESSOR_COMMAND} >> logfiles/processor.log 2>&1
+ssh ${PROCESSOR} ${PROCESSOR_COMMAND} >> logfiles/processor${SEND_RATE}.log 2>&1
 printf "Done\n"
 
 
 if [ "$PROCESSOR_DELETE" = true ] ; then
 	printf "Removing leftover files .. "
-	ssh ${PROCESSOR} rm $FILE_1 $FILE_2 >> logfiles/processor.log 2>&1 
+	ssh ${PROCESSOR} rm $FILE_1 $FILE_2 >> logfiles/processor${SEND_RATE}.log 2>&1
 	printf "Done\n"
 fi

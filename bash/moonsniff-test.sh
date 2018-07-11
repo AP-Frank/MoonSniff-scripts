@@ -1,15 +1,8 @@
 #!/bin/bash
 
-#fill in default values to avoid setting to many options
-GENERATOR=user@some.server.com
-GENERATOR_PATH=moonsniff/MoonGen/
-GENERATOR_PORT="1 0"
+source configuration.sh
 
-SNIFFER=user@some.server.com
-SNIFFER_PATH=moonsniff/MoonGen/
-SNIFFER_PORT="1 0"
-SNIFFER_OUTPUT=measurements
-SNIFFER_LIVE=""
+RUN_TIME=${MS_TIME:-20}
 
 while :; do
 	case $1 in
@@ -17,30 +10,13 @@ while :; do
 			echo "Some helpful information"
 			exit
 			;;
-		-t|--time)
-			RUN_TIME="$2"
-			shift
-			;;
 		-r|--rate)
 			SEND_RATE="$2"
-			shift
-			;;
-		-s|--sniffports)
-			SNIFFER_PORT="$2 $3"
-			shift
-			shift
-			;;
-		-g|--genports)
-			GENERATOR_PORT="$2 $3"
-			shift
 			shift
 			;;
 		-f|--file)
 			SNIFFER_OUTPUT="--output $2"
 			shift
-			;;
-		-l|--live)
-			SNIFFER_LIVE="--live"
 			;;
 		-?*)
 			printf 'WARN: Unknown option (abort): %s\n' "$1" >&2
@@ -55,14 +31,14 @@ done
 mkdir -p logfiles
 
 # build the commands
-SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} ${SNIFFER_LIVE} -r ${RUN_TIME} ${SNIFFER_OUTPUT}"
+SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} -r ${RUN_TIME} ${SNIFFER_OUTPUT} ${SNIFFER_FLAGS}"
 GENERATOR_COMMAND="./${GENERATOR_PATH}build/MoonGen ${GENERATOR_PATH}examples/moonsniff/traffic-gen.lua ${GENERATOR_PORT} -s ${SEND_RATE} -r $(( $RUN_TIME + 4 ))"
 
-echo Executing the following command\(s\):$'\n\t' $SNIFFER_COMMAND$'\n\n' > logfiles/sniffer.log
-echo Executing the following command\(s\):$'\n\t' $GENERATOR_COMMAND$'\n\n' > logfiles/generator.log
+echo Executing the following command\(s\):$'\n\t' $SNIFFER_COMMAND$'\n\n' > logfiles/sniffer-${SEND_RATE}.log
+echo Executing the following command\(s\):$'\n\t' $GENERATOR_COMMAND$'\n\n' > logfiles/generator-${SEND_RATE}.log
 
-ssh ${GENERATOR} ${GENERATOR_COMMAND} >> logfiles/generator.log 2>&1 &
-ssh ${SNIFFER} ${SNIFFER_COMMAND} >> logfiles/sniffer.log 2>&1 &
+ssh ${GENERATOR} ${GENERATOR_COMMAND} >> logfiles/generator-${SEND_RATE}.log 2>&1 &
+ssh ${SNIFFER} ${SNIFFER_COMMAND} >> logfiles/sniffer-${SEND_RATE}.log 2>&1 &
 (
 # the used progressbar is based on https://github.com/fearside/ProgressBar/
 
