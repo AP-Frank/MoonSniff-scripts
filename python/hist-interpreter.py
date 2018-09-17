@@ -92,10 +92,13 @@ def plot_ccdf(compressed_hist, points, bucket_size, xlim, name):
         x, y, inverse = compute_ccdf(compressed_hist, i)
         plt.semilogy(x, inverse)
 
+    axes = plt.gca()
+    percent_line = axes.axhline(0.01, linestyle='dashed', color='grey', linewidth=0.5)
+
     plt.title(name + " (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Latency [us]")
     plt.ylabel("Normalized prevalence")
-    plt.legend([str(point) + " Mbit/s" for point in points])
+    plt.legend([str(point) + " Mbit/s" for point in points] + ['99th percentile'])
 
     if len(xlim) == 2:
         axes = plt.gca()
