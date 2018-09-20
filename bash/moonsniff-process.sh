@@ -46,7 +46,7 @@ mkdir -p logfiles
 # build the commands
 PROCESSOR_COMMAND="./${PROCESSOR_PATH}build/MoonGen ${PROCESSOR_PATH}examples/moonsniff/post-processing.lua ${PROCESSOR_INPUT_1} ${PROCESSOR_INPUT_2} ${PROCESSOR_OUTPUT} --nrbuckets ${PROCESSOR_BUCKET_SIZE}"
 
-echo Executing the following command\(s\):$'\n\t' $PROCESSOR_COMMAND$'\n\n' >> logfiles/processor${SEND_RATE}.log
+echo Executing the following command\(s\):$'\n\t' $PROCESSOR_COMMAND$'\n\n' > logfiles/processor${SEND_RATE}.log
 
 printf "Starting processing of input .. "
 ssh ${PROCESSOR} ${PROCESSOR_COMMAND} >> logfiles/processor${SEND_RATE}.log 2>&1
