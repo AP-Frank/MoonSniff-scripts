@@ -8,14 +8,22 @@ import matplotlib.pyplot as plt
 start = timeit.default_timer()
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-b', '--begin', help="Start value")
-parser.add_argument('-e', '--end', help="End value")
-parser.add_argument('-s', '--stepsize', help="The size ot the steps")
-parser.add_argument('-n', '--name', help="The common part of all file names (without <rate>.csv")
-parser.add_argument('-i', '--image_title', help="Title displayed on all created images")
+parser.add_argument('-b', '--begin', help="Start value", required=True)
+parser.add_argument('-e', '--end', help="End value", required=True)
+parser.add_argument('-s', '--stepsize', help="The size ot the steps", required=True)
+parser.add_argument('-n', '--name', help="The common part of all file names (without <rate>.csv", required=True)
+parser.add_argument('-i', '--image_title', help="Title displayed on all created images", default="Measurement")
+parser.add_argument('-c', '--bucket_size', help="Bucket/Container size of the histogram", required=True)
 parser.add_argument('-t', '--tex', help="Use TeX for typesetting", action='store_true')
 parser.add_argument('-x', '--image_extension', help="Select the image type. Default is png", default="png")
 args = parser.parse_args()
+
+#########################################
+# additional values which can be modified
+
+# format strings for ccdf_df and cdf_df
+FORMAT_PRIMARY = 'b-'  # format for df
+FORMAT_SECONDARY = 'r--'  # format for cdf/ccdf
 
 
 # colors taken from:
@@ -32,6 +40,12 @@ class bcolors:
 
 
 def ask_yes_no(question):
+    """
+    Ask the user a yes or no question via commandline
+
+    :param question: The question to be displayed
+    :return: True if the user answered with yes, False otherwise
+    """
     while True:
         print(question + " [y/n] ")
         choice = input().lower()
@@ -44,12 +58,23 @@ def ask_yes_no(question):
 
 
 def configure_plt_font():
+    """
+    If --tex flag is set, use TeX fonts for texts
+    """
     if args.tex:
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
 
 
 def save_figure(plt, filename):
+    """
+    Saves the given figure in a subfolder called image under the given name
+
+    Old files are never overwritten, if the name is not unique, a number will be incremented
+
+    :param plt: The plot to save
+    :param filename: The name of the file
+    """
     directory = 'images'
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -67,6 +92,16 @@ def save_figure(plt, filename):
 
 
 def compute_ccdf(compressed_hist, index):
+    """
+    Computes the CCDF directly form MoonSniffs histogram representation
+
+    :param compressed_hist: Array of  MoonSniff histograms (compressed)
+    :param index: Index within the compressed_hist
+    :return:
+        x: values (latencies) in [us]<br>
+        y: values (amount of data-points) normalized to 1<br>
+        inverse: 1-y element-wise
+    """
     x = compressed_hist[index][0].copy()
     y = compressed_hist[index][1].copy()
 
@@ -86,14 +121,23 @@ def compute_ccdf(compressed_hist, index):
 
 
 def plot_ccdf(compressed_hist, points, bucket_size, xlim, name):
-    """Computes the complementary cumulative distribution function"""
+    """
+    Plots the cumulative distribution function for all histograms
+
+    :param compressed_hist: Array of MoonSniff histograms (compressed)
+    :param points: Values for the x axis
+    :param bucket_size: Size of the buckets
+    :param xlim: If used limits the shown area (x-axis) to this array, e.g. [0, 1] will only show
+    the graph between 0 and 1
+    :param name: The name of the image
+    """
 
     for i in range(0, len(compressed_hist)):
         x, y, inverse = compute_ccdf(compressed_hist, i)
         plt.semilogy(x, inverse)
 
     axes = plt.gca()
-    percent_line = axes.axhline(0.01, linestyle='dashed', color='grey', linewidth=0.5)
+    percent_line = axes.axhline(0.01, linestyle='dashed', color='grey', linewidth=0.8)
 
     plt.title(name + " (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Latency [us]")
@@ -113,7 +157,16 @@ def plot_ccdf(compressed_hist, points, bucket_size, xlim, name):
 
 
 def plot_cdf_df(compressed_hist, points, bucket_size, xlim, name):
-    """Computes the cumulative distribution function and the plain distribution function"""
+    """
+    Plots the cumulative distribution function and the plain distribution function of a single histogram
+
+    :param compressed_hist: Array of MoonSniff histograms (compressed)
+    :param points: Values for the x axis
+    :param bucket_size: Size of the buckets
+    :param xlim: If used limits the shown area (x-axis) to this array, e.g. [0, 1] will only show
+    the graph between 0 and 1
+    :param name: The name of the image
+    """
 
     print(compressed_hist)
     print(compressed_hist[0])
@@ -130,8 +183,8 @@ def plot_cdf_df(compressed_hist, points, bucket_size, xlim, name):
 
     cummulative_y = np.cumsum(y)
 
-    plt.plot(x, y)
-    plt.plot(x, cummulative_y, 'r--')
+    plt.plot(x, y, FORMAT_PRIMARY)
+    plt.plot(x, cummulative_y, FORMAT_SECONDARY)
 
     if len(xlim) == 2:
         axes = plt.gca()
@@ -154,12 +207,20 @@ def plot_cdf_df(compressed_hist, points, bucket_size, xlim, name):
 
 
 def plot_ccdf_df(compressed_hist, points, bucket_size, xlim, name):
-    """Computes the complementary cumulative distribution function and the plain distribution function"""
+    """
+    Plots the complementary cumulative distribution function and the plain distribution function
+
+    :param compressed_hist: Array of MoonSniff histograms (compressed)
+    :param points: Values for the x axis
+    :param bucket_size: Size of the buckets
+    :param xlim: If used limits the shown area (x-axis) to this array, e.g. [0, 1] will only show
+    :param name: The name of the image
+    """
 
     x, y, inverse = compute_ccdf(compressed_hist, 0)
 
-    plt.semilogy(x, y)
-    plt.semilogy(x, inverse, 'r--')
+    plt.semilogy(x, y, FORMAT_PRIMARY)
+    plt.semilogy(x, inverse, FORMAT_SECONDARY)
 
     if len(xlim) == 2:
         axes = plt.gca()
@@ -182,6 +243,15 @@ def plot_ccdf_df(compressed_hist, points, bucket_size, xlim, name):
 
 
 def box_graph(histograms, xpoints, bucket_size, name):
+    """
+    Plot a box graph representing all histograms
+
+    :param histograms: The input histograms (expanded)
+    :param xpoints: Values for the x axis
+    :param bucket_size: Size of the buckets
+    :param name: The name of the image
+    """
+
     print("now plotting .. ")
     ticks = np.arange(1, len(xpoints) + 1, 1)
     # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
@@ -203,7 +273,7 @@ def box_graph(histograms, xpoints, bucket_size, name):
     max_line = plt.plot(ticks, maxes, color='black', marker='o', linestyle='None', fillstyle='none', label='max/min')
     plt.plot(ticks, mins, color='black', marker='o', linestyle='None', fillstyle='none')
 
-    #plt.legend(handles=[box_parts['boxes'][0]])
+    # plt.legend(handles=[box_parts['boxes'][0]])
     # ax = plt.gca()
     # ax.set_xticks(ticks)
     # ax.set_xticklabels(xpoints)
@@ -215,6 +285,15 @@ def box_graph(histograms, xpoints, bucket_size, name):
 
 
 def violin_graph(histograms, xpoints, bucket_size, name):
+    """
+    Plot a box graph representing all histograms
+
+    :param histograms: The input histograms (expanded)
+    :param xpoints: Values for the x axis
+    :param bucket_size: Size of the buckets
+    :param name: The name of the image
+    """
+
     print("now plotting .. ")
     ticks = np.arange(1, len(xpoints) + 1, 1)
     # plt.figure(num=None, figsize=(14, 6), dpi=80, facecolor='w', edgecolor='k')
@@ -243,6 +322,14 @@ def violin_graph(histograms, xpoints, bucket_size, name):
 
 
 def read_samples():
+    """
+    Reads the MoonSniff output and wraps it in python lists for later processing
+
+    :return:
+        hists: Uncompressed histogram, e.g. 10, 1; 14, 3 -> [10, 14, 14, 14]<br>
+        points: X-axis values (average line-rate associated to each histogram)<br>
+        compressed_hist: Compressed histogram, [[list of values], [list of amounts]]
+    """
     skip_rates = False
     stepsize = int(args.stepsize)
     begin = int(args.begin)
@@ -315,7 +402,7 @@ def read_samples():
                     while dev1 == dev2:
                         dev2 = int(next(file).split(",")[1].split("=")[1])
 
-                    Mbit_framing_1= list()
+                    Mbit_framing_1 = list()
                     Mbit_framing_2 = list()
 
                     for line in file:
@@ -365,6 +452,8 @@ def read_samples():
 configure_plt_font()
 hists, points, compressed_hist = read_samples()
 
+bucket_size = int(args.bucket_size)
+
 ###################################
 # Uncomment/comment below to      #
 # create images                   #
@@ -373,11 +462,11 @@ hists, points, compressed_hist = read_samples()
 # should also work                #
 ###################################
 
-violin_graph(hists, points, 1, args.image_title)
-box_graph(hists, points, 1, args.image_title)
-plot_cdf_df(compressed_hist, points, 1, [], args.image_title)
-plot_ccdf_df(compressed_hist, points, 1, [], args.image_title)
-plot_ccdf(compressed_hist, points, 1, [], args.image_title)
+violin_graph(hists, points, bucket_size, args.image_title)
+box_graph(hists, points, bucket_size, args.image_title)
+plot_cdf_df(compressed_hist, points, bucket_size, [], args.image_title)
+plot_ccdf_df(compressed_hist, points, bucket_size, [], args.image_title)
+plot_ccdf(compressed_hist, points, bucket_size, [], args.image_title)
 
 stop = timeit.default_timer()
 
