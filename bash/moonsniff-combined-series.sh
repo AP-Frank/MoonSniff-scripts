@@ -16,5 +16,5 @@ do
 	FILE_PRE="${SNIFFER_OUT_FILE}-rate-${SEND_RATE}-pre.${SNIFFER_MODE}"
 	FILE_POST="${SNIFFER_OUT_FILE}-rate-${SEND_RATE}-post.${SNIFFER_MODE}"
 
-	./moonsniff-process.sh --first-file $FILE_PRE --second-file $FILE_POST --output ${PROCESSOR_OUT_FILE}-${SEND_RATE}
+	./moonsniff-process.sh --first-file $FILE_PRE --second-file $FILE_POST --output ${PROCESSOR_OUT_FILE}-${SEND_RATE} --rate ${SEND_RATE}
 done
