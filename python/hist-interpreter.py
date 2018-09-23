@@ -260,6 +260,8 @@ def box_graph(histograms, xpoints, bucket_size, name):
     # instead draw only the min and max
     box_parts = plt.boxplot(histograms, showmeans=False, widths=0.7, whis=[5, 95], showfliers=False)
     plt.setp(box_parts['boxes'], label='boxes')
+    plt.setp(box_parts['medians'], label='median')
+    plt.setp(box_parts['fliers'], label='max/min')
 
     plt.title(name + " (" + str(bucket_size) + " ns buckets)")
     plt.xlabel("Average line-rate [Mbit/s]")
@@ -273,7 +275,7 @@ def box_graph(histograms, xpoints, bucket_size, name):
     max_line = plt.plot(ticks, maxes, color='black', marker='o', linestyle='None', fillstyle='none', label='max/min')
     plt.plot(ticks, mins, color='black', marker='o', linestyle='None', fillstyle='none')
 
-    # plt.legend(handles=[box_parts['boxes'][0]])
+    plt.legend(handles=[box_parts['medians'][0], max_line[0]])
     # ax = plt.gca()
     # ax.set_xticks(ticks)
     # ax.set_xticklabels(xpoints)
