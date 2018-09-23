@@ -24,6 +24,7 @@ args = parser.parse_args()
 # format strings for ccdf_df and cdf_df
 FORMAT_PRIMARY = 'b-'  # format for df
 FORMAT_SECONDARY = 'r--'  # format for cdf/ccdf
+BASELINE = None  # Baseline to be drawn in box/violin plot -> number as y value or None for no baseline
 
 
 # colors taken from:
@@ -275,7 +276,12 @@ def box_graph(histograms, xpoints, bucket_size, name):
     max_line = plt.plot(ticks, maxes, color='black', marker='o', linestyle='None', fillstyle='none', label='max/min')
     plt.plot(ticks, mins, color='black', marker='o', linestyle='None', fillstyle='none')
 
-    plt.legend(handles=[box_parts['medians'][0], max_line[0]])
+    if BASELINE is not None:
+        axes = plt.gca()
+        base_line = axes.axhline(BASELINE, linestyle='dashed', color='blue', linewidth=0.8, label='baseline')
+        plt.legend(handles=[box_parts['medians'][0], max_line[0], base_line])
+    else:
+        plt.legend(handles=[box_parts['medians'][0], max_line[0]])
     # ax = plt.gca()
     # ax.set_xticks(ticks)
     # ax.set_xticklabels(xpoints)
