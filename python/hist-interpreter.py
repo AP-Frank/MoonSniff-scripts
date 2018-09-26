@@ -10,8 +10,11 @@ start = timeit.default_timer()
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--begin', help="Start value", required=True)
 parser.add_argument('-e', '--end', help="End value", required=True)
-parser.add_argument('-s', '--stepsize', help="The size ot the steps", required=True)
-parser.add_argument('-n', '--name', help="The common part of all file names (without <rate>.csv)", required=True)
+parser.add_argument('-s', '--step_size', help="The size ot the steps", required=True)
+parser.add_argument('-n', '--name', help="The common part of all file names (without <rate>.csv)", default="hist")
+parser.add_argument('-r', '--rate_name',
+                    help="The common part of all statistics file names (without -<rate>-stats.csv)",
+                    default="measurement-rate")
 parser.add_argument('-i', '--image_title', help="Title displayed on all created images", default="Measurement")
 parser.add_argument('-c', '--bucket_size', help="Bucket/Container size of the histogram", required=True)
 parser.add_argument('-t', '--tex', help="Use TeX for typesetting", action='store_true')
@@ -339,9 +342,9 @@ def read_samples():
         compressed_hist: Compressed histogram, [[list of values], [list of amounts]]
     """
     skip_rates = False
-    stepsize = int(args.stepsize)
+    step_size = int(args.step_size)
     begin = int(args.begin)
-    end = int(args.end) + stepsize
+    end = int(args.end) + step_size
 
     hists = list()
     points = list()
@@ -349,7 +352,7 @@ def read_samples():
     # list is not expanded as hists
     compressed_hist = list()
 
-    for rate in range(begin, end, stepsize):
+    for rate in range(begin, end, step_size):
         value_lst = list()
         amount_lst = list()
 
@@ -393,7 +396,7 @@ def read_samples():
         # print(hists)
 
         if not skip_rates:
-            ratefile = "measurement-rate-" + str(rate) + "-stats.csv"
+            ratefile = args.rate_name + "-" + str(rate) + "-stats.csv"
 
             try:
                 with open(ratefile) as file:
@@ -450,7 +453,7 @@ def read_samples():
                       + bcolors.ENDC)
                 if ask_yes_no("Fall back to base-rate?"):
                     skip_rates = True
-                    points = range(begin, end, stepsize)
+                    points = range(begin, end, step_size)
                 else:
                     exit(0)
 
