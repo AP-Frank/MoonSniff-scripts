@@ -31,8 +31,8 @@ done
 mkdir -p logfiles
 
 # build the commands
-SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} -r ${RUN_TIME} ${SNIFFER_OUTPUT} ${SNIFFER_FLAGS}"
-GENERATOR_COMMAND="./${GENERATOR_PATH}build/MoonGen ${GENERATOR_PATH}examples/moonsniff/traffic-gen.lua ${GENERATOR_PORT} -s ${SEND_RATE} -r $(( $RUN_TIME + 4 ))"
+SNIFFER_COMMAND="sleep 2 | ./${SNIFFER_PATH}build/MoonGen ${SNIFFER_PATH}examples/moonsniff/sniffer.lua ${SNIFFER_PORT} -t ${RUN_TIME} ${SNIFFER_OUTPUT} ${SNIFFER_FLAGS}"
+GENERATOR_COMMAND="./${GENERATOR_PATH}build/MoonGen ${GENERATOR_PATH}examples/moonsniff/traffic-gen.lua ${GENERATOR_PORT} -r ${SEND_RATE} -t $(( $RUN_TIME + 4 ))"
 
 echo Executing the following command\(s\):$'\n\t' $SNIFFER_COMMAND$'\n\n' > logfiles/sniffer-${SEND_RATE}.log
 echo Executing the following command\(s\):$'\n\t' $GENERATOR_COMMAND$'\n\n' > logfiles/generator-${SEND_RATE}.log
