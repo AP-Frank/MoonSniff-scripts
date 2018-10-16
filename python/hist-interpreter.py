@@ -27,7 +27,8 @@ args = parser.parse_args()
 # format strings for ccdf_df and cdf_df
 FORMAT_PRIMARY = 'b-'  # format for df
 FORMAT_SECONDARY = 'r--'  # format for cdf/ccdf
-BASELINE = None  # Baseline to be drawn in box/violin plot -> number as y value or None for no baseline
+BASELINE = None     # Baseline to be drawn in box/violin plot -> number as y value or None for no baseline
+FONT_SIZE = None    # Font size for figures, if None standard font size is used
 
 
 # colors taken from:
@@ -68,6 +69,9 @@ def configure_plt_font():
     if args.tex:
         plt.rc('text', usetex=True)
         plt.rc('font', family='serif')
+
+    if FONT_SIZE is not None:
+        plt.rcParams.update({'font.size': FONT_SIZE})
 
 
 def save_figure(plt, filename):
